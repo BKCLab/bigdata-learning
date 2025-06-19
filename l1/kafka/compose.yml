@@ -1,0 +1,70 @@
+services:
+  kafka1:
+    image: bitnami/kafka:3.7.0
+    container_name: kafka1
+    ports:
+      - "29092:9092"
+    environment:
+      - KAFKA_CFG_NODE_ID=1
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092
+    env_file:
+      - kafka-shared.env
+    volumes:
+      - kafka1_data:/bitnami/kafka
+
+  kafka2:
+    image: bitnami/kafka:3.7.0
+    container_name: kafka2
+    ports:
+      - "29094:9092"
+    environment:
+      - KAFKA_CFG_NODE_ID=2
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092
+    env_file:
+      - kafka-shared.env
+    volumes:
+      - kafka2_data:/bitnami/kafka
+
+  kafka3:
+    image: bitnami/kafka:3.7.0
+    container_name: kafka3
+    ports:
+      - "29096:9092"
+    environment:
+      - KAFKA_CFG_NODE_ID=3
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092
+    env_file:
+      - kafka-shared.env
+    volumes:
+      - kafka3_data:/bitnami/kafka
+
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.5.0
+    container_name: schema-registry
+    ports:
+      - "28081:8081"
+    depends_on:
+      - kafka1
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka-ui
+    ports:
+      - "28080:8080"
+    environment:
+      - KAFKA_CLUSTERS_0_NAME=kraft-cluster
+      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka1:9092
+      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schema-registry:8081
+
+  # my-app:
+  #   container_name: my_app
+  #   build: ./app
+
+volumes:
+  kafka1_data:
+  kafka2_data:
+  kafka3_data:
