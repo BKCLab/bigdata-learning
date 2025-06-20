@@ -3,10 +3,10 @@ services:
     image: bitnami/kafka:3.7.0
     container_name: kafka1
     ports:
-      - "29092:9092"
+      - "19094:9094"
     environment:
       - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092,EXTERNAL://${IP_SERVER}:19094
     env_file:
       - kafka-shared.env
     volumes:
@@ -16,10 +16,10 @@ services:
     image: bitnami/kafka:3.7.0
     container_name: kafka2
     ports:
-      - "29094:9092"
+      - "29094:9094"
     environment:
       - KAFKA_CFG_NODE_ID=2
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092,EXTERNAL://${IP_SERVER}:29094
     env_file:
       - kafka-shared.env
     volumes:
@@ -29,10 +29,10 @@ services:
     image: bitnami/kafka:3.7.0
     container_name: kafka3
     ports:
-      - "29096:9092"
+      - "39094:9094"
     environment:
       - KAFKA_CFG_NODE_ID=3
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092,EXTERNAL://${IP_SERVER}:29094
     env_file:
       - kafka-shared.env
     volumes:
