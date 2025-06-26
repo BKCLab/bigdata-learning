@@ -1,0 +1,9 @@
+java_package: openjdk-11-jdk
+hadoop_user: hadoop
+hadoop_version: 3.3.6
+hadoop_port: 9000
+# cluster_fqdn: ''
+hadoop_url: "https://downloads.apache.org/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz"
+hadoop_prefix: /opt
+hadoop_install_dir: "{{ hadoop_prefix }}/hadoop" # symlink target
+hadoop_data_root: /srv/hadoop # disks under /srv

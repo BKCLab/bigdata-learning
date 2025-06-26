@@ -1,0 +1,208 @@
+---
+- name: Hadoop Cluster | Common setup (all nodes)
+  hosts: namenode,datanodes
+  become: true
+  gather_facts: false
+
+  pre_tasks:
+    - name: Wait for server to be fully initialized
+      ansible.builtin.wait_for_connection:
+        timeout: 600
+        delay: 5
+        sleep: 5
+
+    - name: Gather facts after server is ready
+      ansible.builtin.setup:
+
+    - name: Ensure hadoop OS user exists
+      ansible.builtin.user:
+        name: "{{ hadoop_user }}"
+        shell: /bin/bash
+        create_home: true
+
+    - name: Install Java
+      ansible.builtin.apt:
+        name: "{{ java_package }}"
+        state: present
+        update_cache: true
+
+  tasks:
+    - name: Download Hadoop tarball
+      get_url:
+        url: "{{ hadoop_url }}"
+        dest: /tmp/hadoop.tar.gz
+        mode: "0644"
+
+    - name: Unarchive Hadoop
+      unarchive:
+        src: /tmp/hadoop.tar.gz
+        dest: "{{ hadoop_prefix }}"
+        remote_src: true
+        creates: "{{ hadoop_prefix }}/hadoop-{{ hadoop_version }}"
+
+    - name: Symlink /opt/hadoop → version dir
+      file:
+        src: "{{ hadoop_prefix }}/hadoop-{{ hadoop_version }}"
+        dest: "{{ hadoop_install_dir }}"
+        state: link
+        force: true
+
+    - name: Create data directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+        mode: "0755"
+      loop:
+        - "{{ hadoop_data_root }}/name"
+        - "{{ hadoop_data_root }}/data"
+
+    - name: Environment file for Hadoop
+      copy:
+        dest: /etc/profile.d/hadoop.sh
+        mode: "0755"
+        content: |
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+          export HADOOP_HOME={{ hadoop_install_dir }}
+          export HADOOP_CONF_DIR=$HADOOP_HOME/etc/hadoop
+          export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
+
+    - name: Ensure JAVA_HOME is set in hadoop-env.sh
+      lineinfile:
+        path: "{{ hadoop_install_dir }}/etc/hadoop/hadoop-env.sh"
+        regexp: '^#?\s*export\s+JAVA_HOME=' # match existing (commented or not)
+        line: "export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64"
+        insertafter: EOF # append if the var doesn’t exist
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+        mode: "0644"
+      become: yes
+
+    - name: Deploy Hadoop config XMLs
+      template:
+        src: "{{ item }}"
+        dest: "{{ hadoop_install_dir }}/etc/hadoop/{{ item | basename | regex_replace('.j2$','') }}"
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+      loop:
+        - templates/core-site.xml.j2
+        - templates/hdfs-site.xml.j2
+        - templates/mapred-site.xml.j2
+        - templates/yarn-site.xml.j2
+
+    - name: Deploy workers file on NameNode (list of DataNodes)
+      when: "'namenode' in group_names"
+      template:
+        src: templates/workers.j2
+        dest: "{{ hadoop_install_dir }}/etc/hadoop/workers"
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+
+    - name: Fix ownership on Hadoop directories
+      file:
+        path: "{{ hadoop_prefix }}/hadoop-{{ hadoop_version }}"
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+        # recurse: true
+
+    - name: Hadoop | Ensure /etc/hosts contains public-IP mappings
+      become: yes
+      blockinfile:
+        path: /etc/hosts
+        marker: "# {mark} ANSIBLE MANAGED HADOOP HOSTS"
+        create: yes
+        owner: root
+        group: root
+        mode: "0644"
+
+        # ------------ BEGIN templated host list ------------
+        block: |
+          {% for grp in ['namenode', 'datanodes'] if grp in groups %}
+          {%   for host in groups[grp] %}
+          {{ hostvars[host]['ansible_host'] }} {{ host }}
+          {%   endfor %}
+          {% endfor %}
+        # ------------  END templated host list -------------
+
+- name: Hadoop | Setup SSH keys for passwordless start-dfs
+  hosts: all
+  become: yes
+  vars:
+    ssh_key_file: "/home/{{ hadoop_user }}/.ssh/id_ed25519"
+  tasks:
+    - name: Ensure .ssh directory exists for hadoop user
+      file:
+        path: "/home/{{ hadoop_user }}/.ssh"
+        state: directory
+        owner: "{{ hadoop_user }}"
+        group: "{{ hadoop_user }}"
+        mode: "0700"
+
+    - name: Generate SSH key on NameNode (if not exists)
+      when: inventory_hostname == groups['namenode'][0]
+      become_user: "{{ hadoop_user }}"
+      openssh_keypair:
+        path: "{{ ssh_key_file }}"
+        type: ed25519
+        comment: "{{ hadoop_user }}@{{ inventory_hostname }}"
+        mode: "0600"
+      register: ssh_keygen_result
+
+    - name: Read NameNode public key
+      when: inventory_hostname == groups['namenode'][0]
+      become_user: "{{ hadoop_user }}"
+      slurp:
+        src: "{{ ssh_key_file }}.pub"
+      register: namenode_pubkey
+
+    - name: Set fact with decoded pubkey (only once, globally)
+      set_fact:
+        hadoop_pubkey_decoded: "{{ namenode_pubkey.content | b64decode }}"
+      when: inventory_hostname == groups['namenode'][0]
+      run_once: true
+
+    - name: Add NameNode public key to all nodes' authorized_keys
+      authorized_key:
+        user: "{{ hadoop_user }}"
+        key: "{{ hostvars[groups['namenode'][0]].hadoop_pubkey_decoded }}"
+
+- name: Hadoop Cluster | Format HDFS (NameNode only, one-time)
+  hosts: namenode
+  become: true
+  environment:
+    JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    HADOOP_HOME: "{{ hadoop_install_dir }}"
+    HADOOP_CONF_DIR: "{{ hadoop_install_dir }}/etc/hadoop"
+    PATH: "{{ hadoop_install_dir }}/bin:{{ hadoop_install_dir }}/sbin:/usr/bin:/bin"
+  tasks:
+    - name: Check if namenode already formatted
+      stat:
+        path: "{{ hadoop_data_root }}/name/current/VERSION"
+      register: nn_format_state
+
+    - name: Format NameNode (only if not already formatted)
+      become_user: "{{ hadoop_user }}"
+      command: "{{ hadoop_install_dir }}/bin/hdfs namenode -format -nonInteractive"
+      when: not nn_format_state.stat.exists
+
+- name: Hadoop Cluster | Start HDFS & YARN (NameNode only)
+  hosts: namenode
+  become: true
+  environment:
+    JAVA_HOME: /usr/lib/jvm/java-11-openjdk-amd64
+    HADOOP_HOME: "{{ hadoop_install_dir }}"
+    HADOOP_CONF_DIR: "{{ hadoop_install_dir }}/etc/hadoop"
+    PATH: "{{ hadoop_install_dir }}/bin:{{ hadoop_install_dir }}/sbin:/usr/bin:/bin"
+  tasks:
+    - name: Start HDFS
+      become_user: "{{ hadoop_user }}"
+      shell: "{{ hadoop_install_dir }}/sbin/start-dfs.sh"
+      args:
+        executable: /bin/bash
+
+    # - name: Start YARN
+    #   become_user: "{{ hadoop_user }}"
+    #   shell: "{{ hadoop_install_dir }}/sbin/start-yarn.sh"
+    #   args:
+    #     executable: /bin/bash

@@ -1,0 +1,29 @@
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>2</value>
+  </property>
+
+  <!-- NameNode -->
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:{{ hadoop_data_root }}/name</value>
+  </property>
+
+  <!-- DataNode -->
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:{{ hadoop_data_root }}/data</value>
+  </property>
+
+  {% if inventory_hostname in groups['namenode'] %}
+  <property>
+    <name>dfs.namenode.rpc-bind-host</name>
+    <value>{{ private_ip }}</value>
+  </property>
+  <property>
+    <name>dfs.namenode.http-bind-host</name>
+    <value>{{ private_ip }}</value>
+  </property>
+  {% endif %}
+</configuration>
