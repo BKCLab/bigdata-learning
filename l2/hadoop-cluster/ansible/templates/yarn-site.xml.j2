@@ -3,6 +3,17 @@
     <name>yarn.resourcemanager.hostname</name>
     <value>{{ groups['namenode'][0] }}</value>
   </property>
+
+
+  {% if inventory_hostname in groups['namenode'] %}
+  <property>
+      <name>yarn.resourcemanager.bind-host</name>
+      <value>{{ private_ip }}</value> 
+      <description>The address to bind the ResourceManager services to.
+                    Set this to the private IP to avoid binding to public interfaces.</description>
+  </property>
+  {% endif %}
+
   <property>
     <name>yarn.nodemanager.aux-services</name>
     <value>mapreduce_shuffle</value>

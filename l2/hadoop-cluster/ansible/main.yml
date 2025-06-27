@@ -8,7 +8,7 @@
     - name: Wait for server to be fully initialized
       ansible.builtin.wait_for_connection:
         timeout: 600
-        delay: 5
+        delay: 1
         sleep: 5
 
     - name: Gather facts after server is ready
@@ -25,6 +25,9 @@
         name: "{{ java_package }}"
         state: present
         update_cache: true
+
+  roles:
+    - nodejs
 
   tasks:
     - name: Download Hadoop tarball
@@ -201,8 +204,24 @@
       args:
         executable: /bin/bash
 
-    # - name: Start YARN
-    #   become_user: "{{ hadoop_user }}"
-    #   shell: "{{ hadoop_install_dir }}/sbin/start-yarn.sh"
-    #   args:
-    #     executable: /bin/bash
+    - name: Start YARN
+      become_user: "{{ hadoop_user }}"
+      shell: "{{ hadoop_install_dir }}/sbin/start-yarn.sh"
+      args:
+        executable: /bin/bash
+
+- name: Output Hadoop UI endpoint
+  hosts: localhost
+  gather_facts: no
+  run_once: true
+  vars:
+    nn_host: "{{ hostvars[groups['namenode'][0]].ansible_host }}"
+  tasks:
+    - name: Show Hadoop Web UI endpoint
+      debug:
+        msg: |
+          ✅ Hadoop NameNode Web UI is available at:
+          👉 http://{{ nn_host }}:9870
+
+          ✅ Hadoop ResourceManager UI (if YARN is enabled) is at:
+          👉 http://{{ nn_host }}:8088
