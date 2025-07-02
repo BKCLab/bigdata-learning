@@ -1,0 +1,82 @@
+# Nguồn tham khảo: https://medium.com/@bayuadiwibowo/deploying-a-big-data-ecosystem-dockerized-hadoop-spark-hive-and-zeppelin-654014069c82
+services:
+  namenode:
+    image: apache/hadoop:3
+    hostname: namenode
+    volumes:
+      - namenode-data:/hadoop/dfs/name
+    ports:
+      - 9870:9870
+    env_file:
+      - ./config
+    environment:
+      ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
+    command: ["hdfs", "namenode"]
+
+  datanode_1:
+    image: apache/hadoop:3
+    command: ["hdfs", "datanode"]
+    volumes:
+      - datanode1-data:/hadoop/dfs/data
+    env_file:
+      - ./config
+    depends_on:
+      - namenode
+
+  datanode_2:
+    image: apache/hadoop:3
+    command: ["hdfs", "datanode"]
+    volumes:
+      - datanode2-data:/hadoop/dfs/data
+    env_file:
+      - ./config
+    depends_on:
+      - namenode
+
+  resourcemanager:
+    image: apache/hadoop:3
+    hostname: resourcemanager
+    command: ["yarn", "resourcemanager"]
+    ports:
+      - 8088:8088
+    env_file:
+      - ./config
+
+  nodemanager:
+    image: apache/hadoop:3
+    command: ["yarn", "nodemanager"]
+    env_file:
+      - ./config
+
+  firefox:
+    image: jlesage/firefox
+    hostname: firefox
+    ports:
+      - 5800:5800
+
+  # Spark Client service: This container will be used to submit Spark jobs to YARN
+  spark-client:
+    image: bitnami/spark:3.5.0
+    hostname: spark-client
+    volumes:
+      - ./spark-apps:/opt/spark-apps
+      - ./hadoop-config:/opt/bitnami/spark/conf/yarn
+    environment:
+      # SPARK_MODE: client
+      SPARK_MASTER: yarn
+      SPARK_HOME: /opt/bitnami/spark
+      HADOOP_CONF_DIR: /opt/bitnami/spark/conf/yarn
+      YARN_CONF_DIR: /opt/bitnami/spark/conf/yarn
+
+volumes:
+  namenode-data:
+  datanode1-data:
+  datanode2-data:
+
+networks:
+  default:
+    external: true
+    name: bigdata-network
+  bigdata-network:
+    external: true
+    name: bigdata-network

@@ -1,0 +1,27 @@
+docker volume create bigdata-network
+
+echo "Hello Spark on Hadoop and YARN. Spark is great for big data." > /tmp/test_data.txt
+hdfs dfs -mkdir -p /user/spark
+hdfs dfs -put /tmp/test_data.txt /user/spark/
+hdfs dfs -chmod -R 777 /user/spark
+
+docker compose exec spark-client spark-submit \
+  --master yarn \
+  --deploy-mode client \
+  --conf spark.yarn.resource.manager.hostname=resourcemanager \
+  /opt/spark-apps/simple_spark_app.py \
+  /user/spark/test_data.txt
+
+
+hdfs dfs -mkdir /spark-logs
+hdfs dfs -chmod -R 777 /
+
+docker compose exec spark-client spark-submit \
+  --packages org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0 \
+  --master yarn \
+  --deploy-mode client \
+  --conf spark.yarn.resource.manager.hostname=resourcemanager \
+  --conf spark.eventLog.enabled=true \
+  --conf spark.eventLog.dir=hdfs:///spark-logs \
+  --conf spark.history.fs.logDirectory=hdfs:///spark-logs \
+  /opt/spark-apps/nginx_log_analyzer.py
