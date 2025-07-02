@@ -42,7 +42,13 @@ services:
     env_file:
       - ./config
 
-  nodemanager:
+  nodemanager_1:
+    image: apache/hadoop:3
+    command: ["yarn", "nodemanager"]
+    env_file:
+      - ./config
+
+  nodemanager_2:
     image: apache/hadoop:3
     command: ["yarn", "nodemanager"]
     env_file:

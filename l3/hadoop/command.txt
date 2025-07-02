@@ -1,9 +1,11 @@
 docker volume create bigdata-network
 
+docker compose exec -it namenode /bin/bash
 echo "Hello Spark on Hadoop and YARN. Spark is great for big data." > /tmp/test_data.txt
 hdfs dfs -mkdir -p /user/spark
 hdfs dfs -put /tmp/test_data.txt /user/spark/
 hdfs dfs -chmod -R 777 /user/spark
+
 
 docker compose exec spark-client spark-submit \
   --master yarn \
@@ -12,7 +14,7 @@ docker compose exec spark-client spark-submit \
   /opt/spark-apps/simple_spark_app.py \
   /user/spark/test_data.txt
 
-
+docker compose exec -it namenode /bin/bash
 hdfs dfs -mkdir /spark-logs
 hdfs dfs -chmod -R 777 /
 

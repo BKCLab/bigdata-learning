@@ -1,0 +1,25 @@
+services:
+  nginx:
+    image: nginx:alpine
+    hostname: web-server
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/access.log:/var/log/nginx/access.log
+      - ./nginx/access.json.log:/var/log/nginx/access.json.log
+
+  fluent-bit:
+    image: fluent/fluent-bit:2.2
+    container_name: fluent-bit
+    volumes:
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/nginx-log-parser.conf:/fluent-bit/etc/nginx-log-parser.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+      - ./nginx:/var/log/nginx # Mount NGINX log dir
+
+networks:
+  default:
+    external: true
+    name: bigdata-network
+  bigdata-network:
+    external: true
+    name: bigdata-network
