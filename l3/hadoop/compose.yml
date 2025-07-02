@@ -5,6 +5,7 @@ services:
     hostname: namenode
     volumes:
       - namenode-data:/hadoop/dfs/name
+      - ./gen-data:/opt/gen-data
     ports:
       - 9870:9870
     env_file:
