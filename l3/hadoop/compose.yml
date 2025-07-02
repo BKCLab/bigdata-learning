@@ -12,6 +12,12 @@ services:
     environment:
       ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
     command: ["hdfs", "namenode"]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9870/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   datanode_1:
     image: apache/hadoop:3
@@ -21,7 +27,8 @@ services:
     env_file:
       - ./config
     depends_on:
-      - namenode
+      namenode:
+        condition: service_healthy
 
   datanode_2:
     image: apache/hadoop:3
@@ -31,7 +38,8 @@ services:
     env_file:
       - ./config
     depends_on:
-      - namenode
+      namenode:
+        condition: service_healthy
 
   resourcemanager:
     image: apache/hadoop:3
@@ -47,12 +55,16 @@ services:
     command: ["yarn", "nodemanager"]
     env_file:
       - ./config
+    depends_on:
+      - resourcemanager
 
   nodemanager_2:
     image: apache/hadoop:3
     command: ["yarn", "nodemanager"]
     env_file:
       - ./config
+    depends_on:
+      - resourcemanager
 
   firefox:
     image: jlesage/firefox
