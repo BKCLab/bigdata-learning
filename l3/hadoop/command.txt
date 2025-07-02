@@ -26,4 +26,14 @@ docker compose exec spark-client spark-submit \
   --conf spark.eventLog.enabled=true \
   --conf spark.eventLog.dir=hdfs:///spark-logs \
   --conf spark.history.fs.logDirectory=hdfs:///spark-logs \
+  --conf spark.sql.adaptive.enabled=true \
+  --conf spark.sql.adaptive.coalescePartitions.enabled=true \
+  --conf spark.streaming.backpressure.enabled=true \
+  --conf spark.sql.shuffle.partitions=24 \
   /opt/spark-apps/nginx_log_analyzer.py
+
+while true; do
+  path=$(shuf -n1 -e / /home /login /api/data /products?id=1 /products?id=2)
+  curl -s "http://localhost:80$path"
+  sleep 1
+done
