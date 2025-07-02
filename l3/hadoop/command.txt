@@ -11,6 +11,9 @@ docker compose exec spark-client spark-submit \
   --master yarn \
   --deploy-mode client \
   --conf spark.yarn.resource.manager.hostname=resourcemanager \
+  --num-executors 4 \
+  --executor-cores 1 \
+  --executor-memory 2g \
   /opt/spark-apps/simple_spark_app.py \
   /user/spark/test_data.txt
 
