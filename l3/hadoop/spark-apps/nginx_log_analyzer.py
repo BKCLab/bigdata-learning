@@ -45,7 +45,7 @@ def define_log_schema():
         StructField("size", LongType()),
         StructField("referrer", StringType()),
         StructField("agent", StringType()),
-        StructField("request_time", DoubleType()),
+        StructField("request_time", StringType()),  # String in JSON, cast later
         StructField("upstream_response_time", StringType())
     ])
 

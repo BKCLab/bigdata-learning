@@ -8,6 +8,7 @@ services:
       - "80:80"
     volumes:
       - ./logs:/var/log/nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
     networks:
       - bigdata-network
 
@@ -17,9 +18,9 @@ services:
     depends_on:
       - nginx
     volumes:
-      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./fluent-bit:/fluent-bit/etc
       - ./logs:/var/log/nginx
-    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/nginx-log-parser.conf"]
     networks:
       - bigdata-network
 
