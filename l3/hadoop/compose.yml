@@ -1,109 +1,49 @@
-# Tham khảo kiến trúc từ:
-# https://medium.com/@bayuadiwibowo/deploying-a-big-data-ecosystem-dockerized-hadoop-spark-hive-and-zeppelin-654014069c82
+version: "3.8"
 
 services:
   namenode:
     image: apache/hadoop:3
-    hostname: namenode
     container_name: namenode
-    volumes:
-      - namenode-data:/hadoop/dfs/name
-      - ./gen-data:/opt/gen-data
+    hostname: namenode
     ports:
       - "9870:9870"
-    env_file:
-      - ./config
-    environment:
-      ENSURE_NAMENODE_DIR: "/tmp/hadoop-root/dfs/name"
+      - "8020:8020"
+    volumes:
+      - namenode-data:/hadoop/dfs/name
     command: ["hdfs", "namenode"]
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9870/ || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
-  datanode_1:
-    image: apache/hadoop:3
-    container_name: datanode-1
-    command: ["hdfs", "datanode"]
-    volumes:
-      - datanode1-data:/hadoop/dfs/data
-    env_file:
-      - ./config
-    depends_on:
-      namenode:
-        condition: service_healthy
-
-  datanode_2:
-    image: apache/hadoop:3
-    container_name: datanode-2
-    command: ["hdfs", "datanode"]
-    volumes:
-      - datanode2-data:/hadoop/dfs/data
-    env_file:
-      - ./config
-    depends_on:
-      namenode:
-        condition: service_healthy
+    networks:
+      - bigdata-net
 
   resourcemanager:
     image: apache/hadoop:3
-    hostname: resourcemanager
     container_name: resourcemanager
-    command: ["yarn", "resourcemanager"]
+    hostname: resourcemanager
     ports:
       - "8088:8088"
-    env_file:
-      - ./config
+    command: ["yarn", "resourcemanager"]
+    networks:
+      - bigdata-net
 
-  nodemanager_1:
+  nodemanager-1:
     image: apache/hadoop:3
     container_name: nodemanager-1
     command: ["yarn", "nodemanager"]
-    env_file:
-      - ./config
-    depends_on:
-      - resourcemanager
+    networks:
+      - bigdata-net
 
-  nodemanager_2:
-    image: apache/hadoop:3
-    container_name: nodemanager-2
-    command: ["yarn", "nodemanager"]
-    env_file:
-      - ./config
-    depends_on:
-      - resourcemanager
-
-  firefox:
-    image: jlesage/firefox
-    hostname: firefox
-    container_name: firefox
-    ports:
-      - "5800:5800"
-
-  # Spark Client: chỉ dùng để submit job lên YARN
   spark-client:
     image: apache/spark:3.4.1
-    hostname: spark-client
     container_name: spark-client
+    hostname: spark-client
     volumes:
       - ./spark-apps:/opt/spark-apps
-      - ./hadoop-config:/opt/hadoop/etc/hadoop
-    environment:
-      SPARK_HOME: /opt/spark
-      HADOOP_CONF_DIR: /opt/hadoop/etc/hadoop
-      YARN_CONF_DIR: /opt/hadoop/etc/hadoop
     command: ["sleep", "infinity"]
-    depends_on:
-      - resourcemanager
+    networks:
+      - bigdata-net
 
 volumes:
   namenode-data:
-  datanode1-data:
-  datanode2-data:
 
 networks:
-  default:
+  bigdata-net:
     external: true
-    name: bigdata-network
