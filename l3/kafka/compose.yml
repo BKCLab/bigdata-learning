@@ -1,74 +1,109 @@
+version: "3.8"
+
 services:
-  kafka1:
-    image: bitnami/kafka:3.7.0
-    container_name: kafka1
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    hostname: zookeeper
+    networks:
+      - bigdata-net
     ports:
-      - "19094:9094"
+      - "2181:2181"
     environment:
-      - KAFKA_CFG_NODE_ID=1
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka1:9092,EXTERNAL://${IP_SERVER}:19094
-    env_file:
-      - kafka-shared.env
-    volumes:
-      - kafka1_data:/bitnami/kafka
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  kafka1:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka1
+    hostname: kafka1
+    depends_on:
+      - zookeeper
+    networks:
+      - bigdata-net
+    ports:
+      - "19092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
 
   kafka2:
-    image: bitnami/kafka:3.7.0
+    image: confluentinc/cp-kafka:7.5.0
     container_name: kafka2
+    hostname: kafka2
+    depends_on:
+      - zookeeper
+    networks:
+      - bigdata-net
     ports:
-      - "29094:9094"
+      - "29092:9092"
     environment:
-      - KAFKA_CFG_NODE_ID=2
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka2:9092,EXTERNAL://${IP_SERVER}:29094
-    env_file:
-      - kafka-shared.env
-    volumes:
-      - kafka2_data:/bitnami/kafka
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:9092
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
 
   kafka3:
-    image: bitnami/kafka:3.7.0
+    image: confluentinc/cp-kafka:7.5.0
     container_name: kafka3
+    hostname: kafka3
+    depends_on:
+      - zookeeper
+    networks:
+      - bigdata-net
     ports:
-      - "39094:9094"
+      - "39092:9092"
     environment:
-      - KAFKA_CFG_NODE_ID=3
-      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka3:9092,EXTERNAL://${IP_SERVER}:29094
-    env_file:
-      - kafka-shared.env
-    volumes:
-      - kafka3_data:/bitnami/kafka
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:9092
+
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
 
   schema-registry:
     image: confluentinc/cp-schema-registry:7.5.0
     container_name: schema-registry
-    ports:
-      - "8081:8081"
     depends_on:
       - kafka1
+    networks:
+      - bigdata-net
+    ports:
+      - "8081:8081"
     environment:
-      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
       SCHEMA_REGISTRY_HOST_NAME: schema-registry
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka1:9092
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
     container_name: kafka-ui
+    depends_on:
+      - kafka1
+    networks:
+      - bigdata-net
     ports:
       - "8080:8080"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=kraft-cluster
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka1:9092
-      - KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schema-registry:8081
-
-volumes:
-  kafka1_data:
-  kafka2_data:
-  kafka3_data:
+      KAFKA_CLUSTERS_0_NAME: zk-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092,kafka2:9092,kafka3:9092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
 
 networks:
-  default:
+  bigdata-net:
     external: true
-    name: bigdata-network
-  bigdata-network:
-    external: true
-    name: bigdata-network

@@ -1,28 +1,24 @@
 services:
   nginx:
     image: nginx:alpine
-    hostname: web-server
+    container_name: web-nginx
     ports:
-      - 80:80
+      - "80:80"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/access.log:/var/log/nginx/access.log
-      - ./nginx/access.json.log:/var/log/nginx/access.json.log
+      - ./logs:/var/log/nginx
+    networks:
+      - bigdata-net
 
   fluent-bit:
     image: fluent/fluent-bit:2.2
     container_name: fluent-bit
     volumes:
-      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
-      - ./fluent-bit/nginx-log-parser.conf:/fluent-bit/etc/nginx-log-parser.conf:ro
-      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
-      - ./nginx:/var/log/nginx # Mount NGINX log dir
-    depends_on:
-      - nginx
+      - ./fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf
+      - ./logs:/var/log/nginx
+    command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
+    networks:
+      - bigdata-net
+
 networks:
-  default:
+  bigdata-net:
     external: true
-    name: bigdata-network
-  bigdata-network:
-    external: true
-    name: bigdata-network
