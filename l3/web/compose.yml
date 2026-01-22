@@ -9,7 +9,7 @@ services:
     volumes:
       - ./logs:/var/log/nginx
     networks:
-      - bigdata-net
+      - bigdata-network
 
   fluent-bit:
     image: fluent/fluent-bit:2.2
@@ -21,8 +21,8 @@ services:
       - ./logs:/var/log/nginx
     command: ["/fluent-bit/bin/fluent-bit", "-c", "/fluent-bit/etc/fluent-bit.conf"]
     networks:
-      - bigdata-net
+      - bigdata-network
 
 networks:
-  bigdata-net:
+  bigdata-network:
     external: true

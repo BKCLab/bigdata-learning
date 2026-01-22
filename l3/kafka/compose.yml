@@ -11,7 +11,7 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     networks:
-      - bigdata-net
+      - bigdata-network
 
   kafka1:
     image: confluentinc/cp-kafka:7.5.0
@@ -28,7 +28,7 @@ services:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:9092
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     networks:
-      - bigdata-net
+      - bigdata-network
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -41,8 +41,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka1:9092
     networks:
-      - bigdata-net
+      - bigdata-network
 
 networks:
-  bigdata-net:
+  bigdata-network:
     external: true

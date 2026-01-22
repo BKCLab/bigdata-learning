@@ -106,4 +106,4 @@ volumes:
 networks:
   default:
     external: true
-    name: bigdata-net
+    name: bigdata-network
